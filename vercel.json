@@ -1,0 +1,5 @@
+{
+  "redirects": [
+    { "source": "/", "destination": "/almaty_rent_dashboard.html", "permanent": false }
+  ]
+}

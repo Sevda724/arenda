@@ -1,0 +1,8 @@
+# Regeneratable intermediate build artifacts (see scripts/README or run 1_prep -> 2_export -> 2b -> 3_splice)
+scripts/build/
+
+# Scratch analysis output, not part of the project
+explore1.txt
+explore2.txt
+krisha_ads_1.xlsx.lock
+~$*.xlsx
