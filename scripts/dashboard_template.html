@@ -1,5 +1,6 @@
 <title>Аренда жилья Алматы</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
 <style>
 :root{
   color-scheme:light;
@@ -158,12 +159,15 @@ details.more .filterbar{margin-top:12px;}
 .card .cb{padding:16px 18px 18px;}
 
 /* map */
-.map-toggles{display:flex;gap:6px;}
+.map-toggles{display:flex;gap:6px;flex-wrap:wrap;}
 .mini-toggle{border:1px solid var(--line-strong);background:var(--surface);color:var(--ink-600);border-radius:6px;padding:4px 9px;font-size:11.5px;cursor:pointer;font-family:inherit;}
 .mini-toggle.on{background:var(--accent-wash);border-color:var(--accent);color:var(--accent-ink);font-weight:600;}
+#gridSubToggles{opacity:.4;pointer-events:none;transition:opacity .15s;width:100%;margin-top:8px;}
+#gridSubToggles.active{opacity:1;pointer-events:auto;}
+#gridSubToggles .grid-stat-btn.disabled,#gridSubToggles #gridStatLbl.disabled{opacity:.4;pointer-events:none;}
 #mapCard .cb{padding:0;position:relative;}
-#mapCanvas{display:block;width:100%;cursor:grab;touch-action:none;background:var(--surface-2);}
-#mapCanvas.dragging{cursor:grabbing;}
+#mapCanvas{display:block;width:100%;background:var(--surface-2);}
+#mapCanvas.dark-tiles .maplibregl-canvas{filter:invert(1) hue-rotate(180deg) brightness(0.82) contrast(0.92) saturate(0.8);}
 .map-legend{position:absolute;left:14px;bottom:14px;background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:9px 12px;box-shadow:var(--shadow);font-size:11.5px;display:flex;flex-direction:column;gap:5px;pointer-events:none;}
 .map-legend .row{display:flex;align-items:center;gap:6px;color:var(--ink-600);}
 .map-legend .row .dot{width:8px;height:8px;border-radius:50%;flex:none;}
@@ -183,6 +187,7 @@ details.more .filterbar{margin-top:12px;}
 .map-zoom button{width:30px;height:28px;border:none;background:var(--surface);color:var(--ink-600);font-size:16px;cursor:pointer;font-family:inherit;}
 .map-zoom button:hover{background:var(--surface-2);color:var(--ink-900);}
 .map-zoom button:first-child{border-bottom:1px solid var(--line);}
+.district-label{pointer-events:none;font:600 11px -apple-system,sans-serif;color:var(--ink-600);white-space:nowrap;text-shadow:0 0 3px var(--surface),0 0 3px var(--surface),0 0 3px var(--surface);}
 
 .tooltip-card{position:absolute;pointer-events:none;background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);padding:10px 12px;font-size:12px;max-width:230px;z-index:20;opacity:0;transition:opacity .08s;}
 .tooltip-card.show{opacity:1;}
@@ -202,7 +207,7 @@ details.more .filterbar{margin-top:12px;}
 .click-card a.cc-link:hover{opacity:.9;}
 
 /* district chart */
-#districtChart,#catStats,#priceHist,#floorChart{display:block;width:100%;}
+#districtChart,#catStats,#priceHist,#floorChart,#scatterChart{display:block;width:100%;}
 #districtChart .bar-row{cursor:default;}
 #districtChart text{fill:var(--ink-600);font-size:11.5px;font-family:"Inter",-apple-system,sans-serif;}
 #districtChart text.val{fill:var(--ink-900);font-weight:600;font-variant-numeric:tabular-nums;}
@@ -212,6 +217,8 @@ details.more .filterbar{margin-top:12px;}
 .chart-legend .li{display:flex;align-items:center;gap:6px;}
 .chart-legend .swatch{width:14px;height:8px;border-radius:2px;background:var(--seq-400);}
 .chart-legend .tick{width:2px;height:11px;background:var(--ink-900);}
+.chart-legend .dot{width:8px;height:8px;border-radius:50%;flex:none;}
+.chart-legend .line{width:14px;height:2px;background:var(--ink-900);}
 .sort-btns{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
 .sort-lbl{font-size:11px;color:var(--ink-400);margin-right:2px;}
 
@@ -224,6 +231,7 @@ details.more .filterbar{margin-top:12px;}
 
 /* ---------- table ---------- */
 .matrixcard{margin-top:16px;}
+.scattercard{margin-top:16px;}
 table.matrix{border-collapse:collapse;font-size:12px;min-width:100%;}
 table.matrix th{padding:8px 10px;text-align:center;color:var(--ink-400);font-size:10px;text-transform:uppercase;letter-spacing:.03em;border-bottom:1px solid var(--line);white-space:nowrap;font-weight:600;}
 table.matrix th:first-child{text-align:left;}
@@ -378,10 +386,20 @@ footer.foot b{color:var(--ink-600);}
           <button class="mini-toggle on" id="toggleBounds">Границы районов</button>
           <button class="mini-toggle" id="toggleChoropleth">Цена по районам</button>
           <button class="mini-toggle on" id="togglePoints">Точки объявлений</button>
+          <button class="mini-toggle" id="toggleGrid">Сетка цены</button>
+        </div>
+        <div class="sort-btns" id="gridSubToggles">
+          <span class="sort-lbl">Метрика:</span>
+          <button class="mini-toggle on" id="gridMetricPm2">₸/м²</button>
+          <button class="mini-toggle" id="gridMetricPrice">₸/мес</button>
+          <button class="mini-toggle" id="gridMetricCount">Кол-во объявлений</button>
+          <span class="sort-lbl" id="gridStatLbl">Показатель:</span>
+          <button class="mini-toggle on grid-stat-btn" id="gridStatMedian">Медиана</button>
+          <button class="mini-toggle grid-stat-btn" id="gridStatMean">Среднее</button>
         </div>
       </div>
       <div class="cb">
-        <canvas id="mapCanvas"></canvas>
+        <div id="mapCanvas"></div>
         <div class="map-hint">Колесо — зум, перетаскивание — сдвиг</div>
         <div class="map-zoom"><button id="zoomIn">+</button><button id="zoomOut">–</button></div>
         <div class="map-attrib">© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors</div>
@@ -455,6 +473,22 @@ footer.foot b{color:var(--ink-600);}
     </div>
   </div>
 
+  <div class="card scattercard">
+    <div class="ch">
+      <h2>Площадь × цена за м²</h2>
+      <div class="ch-note" id="scatterNote"></div>
+    </div>
+    <div class="cb">
+      <div class="ch-note" style="margin-bottom:10px;">Каждая точка — объявление с указанной площадью и ценой за м² (с учётом активных фильтров). Линии — медиана по интервалам площади, отдельно для каждого типа жилья (цвет как у точек): обычно снижается вправо — чем больше площадь, тем ниже цена за м² (эффект масштаба). Общий тренд по всем типам сразу не считаем — он мешает, потому что типы жилья экономически разные. «Комната» не показана: в этой категории площадь в объявлении — это площадь всей квартиры/дома, а не сдаваемой комнаты, поэтому цена за м² для неё не показательна (по той же причине она не входит и в матрицу цены за м²).</div>
+      <svg id="scatterChart" height="320"></svg>
+      <div class="chart-legend" id="scatterLegend">
+        <div class="li"><span class="dot" style="background:var(--cat-1)"></span>Квартира</div>
+        <div class="li"><span class="dot" style="background:var(--cat-2)"></span>Дом/дача</div>
+        <div class="li">линия своего цвета — медиана по интервалу площади для этого типа</div>
+      </div>
+    </div>
+  </div>
+
   <div class="card tablecard">
     <div class="ch">
       <h2>Список объявлений</h2>
@@ -476,12 +510,13 @@ footer.foot b{color:var(--ink-600);}
   </div>
 
   <footer class="foot">
-    <b>Методология.</b> В выборку включены объявления раздела «Аренда» категорий «Квартиры», «Комнаты» и «Дома/дачи» (коммерческая недвижимость, гаражи и промбазы исключены). Комнаты, площадь и этаж распознаны из заголовка объявления. Район определён по тексту адреса, а для объявлений без явного указания района — по координатам объекта внутри полигона района (справочник районов Алматы). Объявления вне 8 районов Алматы (пригороды вроде Бесагаша) в выборку не включены. Часть оставшихся объявлений с некорректными координатами не показана на карте, но учтена в остальной статистике. Цены — как указаны в объявлении; часть значений на краях диапазона (посуточная аренда по ошибке отнесённая к помесячной, комнаты в общежитиях) может быть нетипичной — используйте фильтр по цене. Картографическая подложка — © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener" style="color:inherit;">OpenStreetMap</a> contributors, снимок сохранён в файл на момент сборки (карта не подгружается вживую).
+    <b>Методология.</b> В выборку включены объявления раздела «Аренда» категорий «Квартиры», «Комнаты» и «Дома/дачи» (коммерческая недвижимость, гаражи и промбазы исключены). Комнаты, площадь и этаж распознаны из заголовка объявления. Район определён по тексту адреса, а для объявлений без явного указания района — по координатам объекта внутри полигона района (справочник районов Алматы). Объявления вне 8 районов Алматы (пригороды вроде Бесагаша) в выборку не включены. Часть оставшихся объявлений с некорректными координатами не показана на карте, но учтена в остальной статистике. Цены — как указаны в объявлении; часть значений на краях диапазона (посуточная аренда по ошибке отнесённая к помесячной, комнаты в общежитиях) может быть нетипичной — используйте фильтр по цене. Картографическая подложка — © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener" style="color:inherit;">OpenStreetMap</a> contributors, тайлы подгружаются вживую — для отображения карты нужен интернет.
   </footer>
 
 </div>
 
 <script id="raw-data" type="application/json">__DATA_JSON__</script>
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <script>
 (function(){
 "use strict";
@@ -497,6 +532,13 @@ var DISTRICTS = ["Бостандыкский район","Медеуский р�
 function cssVar(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
 function fmtInt(n){ return new Intl.NumberFormat("ru-RU").format(Math.round(n)); }
 function fmtT(n){ return fmtInt(n) + " ₸"; }
+function percentile(arr, p){
+  if(!arr.length) return null;
+  var s = arr.slice().sort(function(a,b){return a-b;});
+  var idx = (s.length-1)*p;
+  var lo = Math.floor(idx), hi = Math.ceil(idx);
+  return lo===hi ? s[lo] : s[lo] + (s[hi]-s[lo])*(idx-lo);
+}
 function median(arr){
   if(!arr.length) return null;
   var s = arr.slice().sort(function(a,b){return a-b;});
@@ -660,6 +702,45 @@ function districtAgg(){
   return rows;
 }
 
+/* ---------------- price grid ---------------- */
+var showGrid = false;
+var gridMetric = "pm2";   // "pm2" | "price" | "count"
+var gridStat = "median";  // "median" | "mean" - unused when gridMetric==="count"
+var GRID_CELL_M = 500;    // target cell side in meters (square in real-world distance, not degrees)
+var GRID_MIN_N = 4;       // price metrics only - 500m cells hold far fewer listings than the old 3km ones
+var METERS_PER_DEG_LAT = 111320;
+
+function computeGrid(){
+  var cellLon = GRID_CELL_M/(METERS_PER_DEG_LAT*cosLat);
+  var cellLat = GRID_CELL_M/METERS_PER_DEG_LAT;
+  var cols = Math.ceil((B.lonMax-B.lonMin)/cellLon);
+  var rows = Math.ceil((B.latMax-B.latMin)/cellLat);
+  var buckets = {};
+  filtered.forEach(function(r){
+    if(!(r.lat>=B.latMin && r.lat<=B.latMax && r.lon>=B.lonMin && r.lon<=B.lonMax)) return;
+    var col = Math.min(cols-1, Math.floor((r.lon-B.lonMin)/cellLon));
+    var row = Math.min(rows-1, Math.floor((B.latMax-r.lat)/cellLat));
+    var key = col+"_"+row;
+    var b = buckets[key] || (buckets[key] = {col:col, row:row, n:0, vals:[]});
+    b.n++;
+    if(gridMetric!=="count"){
+      var val = gridMetric==="pm2" ? r.pm2 : r.price;
+      if(val!=null) b.vals.push(val);
+    }
+  });
+  var cells = [];
+  Object.keys(buckets).forEach(function(k){
+    var b = buckets[k];
+    if(gridMetric==="count"){
+      cells.push({col:b.col, row:b.row, n:b.n, stat:b.n});
+    } else {
+      if(b.vals.length < GRID_MIN_N) return;
+      cells.push({col:b.col, row:b.row, n:b.vals.length, stat: gridStat==="median"?median(b.vals):mean(b.vals)});
+    }
+  });
+  return {cells:cells, cellLon:cellLon, cellLat:cellLat};
+}
+
 function seqColor(t){
   var steps = [cssVar("--seq-100"),cssVar("--seq-200"),cssVar("--seq-300"),cssVar("--seq-400"),cssVar("--seq-500"),cssVar("--seq-600"),cssVar("--seq-700")];
   t = Math.max(0,Math.min(1,t));
@@ -805,22 +886,51 @@ function renderCatStats(){
 }
 
 /* ---------------- map ---------------- */
-var canvas = document.getElementById("mapCanvas");
-var ctx = canvas.getContext("2d");
 var showBounds = true, showChoropleth = false, showPoints = true;
-document.getElementById("toggleBounds").addEventListener("click", function(){ showBounds=!showBounds; this.classList.toggle("on"); drawMap(); });
+document.getElementById("toggleBounds").addEventListener("click", function(){ showBounds=!showBounds; this.classList.toggle("on"); applyBoundsVisibility(); });
 document.getElementById("toggleChoropleth").addEventListener("click", function(){
   showChoropleth=!showChoropleth; this.classList.toggle("on");
-  document.getElementById("mapLegend").classList.toggle("choropleth", showChoropleth);
-  drawMap();
+  document.getElementById("mapLegend").classList.toggle("choropleth", showChoropleth || showGrid);
+  applyChoroplethVisibility();
 });
 document.getElementById("togglePoints").addEventListener("click", function(){
   showPoints=!showPoints; this.classList.toggle("on");
   document.getElementById("mapLegend").classList.toggle("dim", !showPoints);
-  drawMap();
+  applyPointsVisibility();
 });
+document.getElementById("toggleGrid").addEventListener("click", function(){
+  showGrid=!showGrid; this.classList.toggle("on");
+  document.getElementById("gridSubToggles").classList.toggle("active", showGrid);
+  document.getElementById("mapLegend").classList.toggle("choropleth", showGrid || showChoropleth);
+  applyGridVisibility();
+});
+function updateLegendWording(){
+  var lbls = document.querySelectorAll("#mapLegend .seq .lbl span");
+  if(lbls.length<2) return;
+  var isCount = showGrid && gridMetric==="count";
+  lbls[0].textContent = isCount ? "меньше" : "дешевле";
+  lbls[1].textContent = isCount ? "больше" : "дороже";
+}
+function setGridMetric(m, btnId){
+  gridMetric = m;
+  ["gridMetricPm2","gridMetricPrice","gridMetricCount"].forEach(function(id){
+    document.getElementById(id).classList.toggle("on", id===btnId);
+  });
+  var disabled = m==="count";
+  document.getElementById("gridStatLbl").classList.toggle("disabled", disabled);
+  document.querySelectorAll(".grid-stat-btn").forEach(function(el){ el.classList.toggle("disabled", disabled); });
+  updateLegendWording();
+  updateGridLayer();
+}
+document.getElementById("gridMetricPm2").addEventListener("click", function(){ setGridMetric("pm2","gridMetricPm2"); });
+document.getElementById("gridMetricPrice").addEventListener("click", function(){ setGridMetric("price","gridMetricPrice"); });
+document.getElementById("gridMetricCount").addEventListener("click", function(){ setGridMetric("count","gridMetricCount"); });
+document.getElementById("gridStatMedian").addEventListener("click", function(){ gridStat="median"; this.classList.add("on"); document.getElementById("gridStatMean").classList.remove("on"); updateGridLayer(); });
+document.getElementById("gridStatMean").addEventListener("click", function(){ gridStat="mean"; this.classList.add("on"); document.getElementById("gridStatMedian").classList.remove("on"); updateGridLayer(); });
 
 var VALID = RECORDS.filter(function(r){ return r.lat>=42.8 && r.lat<=43.65 && r.lon>=76.3 && r.lon<=77.7; });
+var RECORDS_BY_ID = {};
+RECORDS.forEach(function(r){ RECORDS_BY_ID[r.id] = r; });
 
 function flattenGeoBounds(){
   var lats=[], lons=[];
@@ -838,68 +948,7 @@ B.latMin-=padLat; B.latMax+=padLat; B.lonMin-=padLon; B.lonMax+=padLon;
 var lat0 = (B.latMin+B.latMax)/2;
 var cosLat = Math.cos(lat0*Math.PI/180);
 
-var view = { k:1, tx:0, ty:0 };
-var baseScale = 1, DPR = Math.max(1, window.devicePixelRatio||1);
-
-/* real OpenStreetMap-derived basemap raster, fetched once at build time and
-   embedded (tiles can't be loaded live inside the artifact sandbox) */
-var basemapImg = null, basemapReady = false;
-if(DATA.basemap){
-  basemapImg = new Image();
-  basemapImg.onload = function(){ basemapReady = true; drawMap(); };
-  basemapImg.src = DATA.basemap.uri;
-}
 function isDarkTheme(){ return getComputedStyle(document.documentElement).colorScheme.indexOf("dark") !== -1; }
-
-function fitBase(){
-  var w = canvas.clientWidth, h = canvas.clientHeight;
-  var worldW = (B.lonMax-B.lonMin)*cosLat, worldH = (B.latMax-B.latMin);
-  /* "cover" fit: fill the canvas edge-to-edge (crop N/S or E/W as needed)
-     instead of "contain", which left empty gutters once the map card
-     went full-width and its aspect ratio stopped matching Almaty's bbox */
-  baseScale = Math.max(w/worldW, h/worldH);
-}
-function project(lon,lat){
-  var w = canvas.clientWidth, h = canvas.clientHeight;
-  var cx = (B.lonMin+B.lonMax)/2, cy = (B.latMin+B.latMax)/2;
-  var x = (lon-cx)*cosLat*baseScale*view.k + w/2 + view.tx;
-  var y = -(lat-cy)*baseScale*view.k + h/2 + view.ty;
-  return [x,y];
-}
-
-function resizeCanvas(){
-  /* size the box to Almaty's own aspect ratio (via B, set once from the
-     district polygons + data) instead of a fixed height - on a full-width
-     layout a fixed height made the box far wider than the city is, so
-     "cover" fit had to crop most of its north-south extent to fill it */
-  var worldW = (B.lonMax-B.lonMin)*cosLat, worldH = (B.latMax-B.latMin);
-  var w = canvas.clientWidth;
-  var targetH = Math.max(420, Math.min(680, w*worldH/worldW));
-  canvas.style.height = targetH+"px";
-  canvas.width = w*DPR; canvas.height = targetH*DPR;
-  ctx.setTransform(DPR,0,0,DPR,0,0);
-  fitBase();
-  clampView();
-  drawMap();
-}
-
-var screenPts = [];
-
-function drawPolygon(geom, fillStyle, strokeStyle, lineWidth){
-  var polys = geom.type==="Polygon" ? [geom.coordinates] : geom.coordinates;
-  ctx.beginPath();
-  polys.forEach(function(poly){
-    poly.forEach(function(ring){
-      ring.forEach(function(p,i){
-        var xy = project(p[0],p[1]);
-        if(i===0) ctx.moveTo(xy[0],xy[1]); else ctx.lineTo(xy[0],xy[1]);
-      });
-      ctx.closePath();
-    });
-  });
-  if(fillStyle){ ctx.fillStyle = fillStyle; ctx.fill(); }
-  if(strokeStyle){ ctx.strokeStyle = strokeStyle; ctx.lineWidth = lineWidth||1.4; ctx.stroke(); }
-}
 
 function polyCentroid(geom){
   var poly = geom.type==="Polygon" ? geom.coordinates[0] : geom.coordinates[0][0];
@@ -907,174 +956,187 @@ function polyCentroid(geom){
   return [x/poly.length, y/poly.length];
 }
 
-function drawMap(){
-  var w = canvas.clientWidth, h = canvas.clientHeight;
-  ctx.clearRect(0,0,w,h);
-  ctx.fillStyle = cssVar("--surface-2"); ctx.fillRect(0,0,w,h);
+var mapEl = document.getElementById("mapCanvas");
+function sizeMapContainer(){
+  var worldW = (B.lonMax-B.lonMin)*cosLat, worldH = (B.latMax-B.latMin);
+  var w = mapEl.clientWidth;
+  var targetH = Math.max(420, Math.min(680, w*worldH/worldW));
+  mapEl.style.height = targetH+"px";
+  if(window.map) window.map.resize();
+}
+sizeMapContainer();
 
-  if(basemapReady){
-    var bb = DATA.basemap.bounds;
-    var tl = project(bb.lonMin, bb.latMax), br = project(bb.lonMax, bb.latMin);
-    var dark = isDarkTheme();
-    ctx.save();
-    ctx.filter = dark ? "invert(1) hue-rotate(180deg) brightness(0.82) contrast(0.92) saturate(0.8)" : "none";
-    ctx.drawImage(basemapImg, tl[0], tl[1], br[0]-tl[0], br[1]-tl[1]);
-    ctx.restore();
-  }
+/* live OSM raster tiles - always sharp at any zoom, unlike a single
+   build-time-baked basemap image; trades offline/Artifact-sandbox use
+   for that (see README) */
+var map = new maplibregl.Map({
+  container: "mapCanvas",
+  attributionControl: false,
+  style: {
+    version: 8,
+    sources: { osm: { type:"raster", tiles:["https://tile.openstreetmap.org/{z}/{x}/{y}.png"], tileSize:256, attribution:"© OpenStreetMap contributors" } },
+    layers: [{ id:"osm", type:"raster", source:"osm" }]
+  },
+  bounds: [[B.lonMin,B.latMin],[B.lonMax,B.latMax]]
+});
+window.map = map;
 
-  var choroData = {};
-  if(showChoropleth){
-    districtAgg().forEach(function(r){ choroData[r.district]=r; });
-  }
-  var meds = Object.keys(choroData).map(function(k){return choroData[k].median;});
-  var minM = Math.min.apply(null, meds), maxM = Math.max.apply(null, meds);
+function seqColorExpr(getExpr){
+  var stops = [cssVar("--seq-100"),cssVar("--seq-200"),cssVar("--seq-300"),cssVar("--seq-400"),cssVar("--seq-500"),cssVar("--seq-600"),cssVar("--seq-700")];
+  var expr = ["interpolate",["linear"],getExpr];
+  stops.forEach(function(c,i){ expr.push(i/(stops.length-1), c); });
+  return expr;
+}
 
+var districtMarkers = [];
+function initDistrictLabels(){
   DISTRICTS_GEO.features.forEach(function(f){
-    var name = f.properties.name;
-    var fill = null;
-    if(showChoropleth && choroData[name]){
-      var t = maxM>minM ? (choroData[name].median-minM)/(maxM-minM) : 0.5;
-      ctx.save(); ctx.globalAlpha = basemapReady ? 0.5 : 0.85;
-      drawPolygon(f.geometry, seqColor(0.15+t*0.85), null);
-      ctx.restore();
-    }
-    if(showBounds){
-      /* white halo underneath a colored line - a plain gray stroke got
-         lost against the OSM basemap's own busy road/label colors */
-      drawPolygon(f.geometry, null, cssVar("--surface"), 3.6);
-      drawPolygon(f.geometry, null, cssVar("--accent"), 1.6);
-    }
-    if(showBounds && view.k < 3.2){
-      var c = polyCentroid(f.geometry);
-      var xy = project(c[0],c[1]);
-      ctx.font = "600 11px -apple-system,sans-serif";
-      ctx.textAlign = "center";
-      ctx.lineWidth = 3; ctx.strokeStyle = cssVar("--surface"); ctx.globalAlpha = 0.85;
-      ctx.strokeText(name.replace(" район",""), xy[0], xy[1]);
-      ctx.globalAlpha = 1; ctx.fillStyle = cssVar("--ink-600");
-      ctx.fillText(name.replace(" район",""), xy[0], xy[1]);
-    }
+    var c = polyCentroid(f.geometry);
+    var el = document.createElement("div");
+    el.className = "district-label";
+    el.textContent = f.properties.name.replace(" район","");
+    var m = new maplibregl.Marker({element:el, anchor:"center"}).setLngLat(c).addTo(map);
+    districtMarkers.push(m);
   });
-
-  screenPts = [];
-  if(showPoints){
-    var haloColor = cssVar("--surface");
-    filtered.forEach(function(r){
-      if(!(r.lat>=42.8 && r.lat<=43.65 && r.lon>=76.3 && r.lon<=77.7)) return;
-      var xy = project(r.lon,r.lat);
-      if(xy[0]<-10||xy[0]>w+10||xy[1]<-10||xy[1]>h+10) return;
-      ctx.beginPath();
-      ctx.arc(xy[0],xy[1],3.1,0,Math.PI*2);
-      ctx.fillStyle = catColor(r.cat);
-      ctx.globalAlpha = 0.72;
-      ctx.fill();
-      ctx.globalAlpha = 0.9; ctx.lineWidth = 0.8; ctx.strokeStyle = haloColor; ctx.stroke();
-      ctx.globalAlpha = 1;
-      screenPts.push({x:xy[0],y:xy[1],r:r});
-    });
-  }
-
-  if(hoverPt){
-    ctx.beginPath();
-    ctx.arc(hoverPt.x,hoverPt.y,6,0,Math.PI*2);
-    ctx.strokeStyle = cssVar("--ink-900"); ctx.lineWidth=2; ctx.stroke();
-  }
+}
+function updateLabelVisibility(){
+  var show = showBounds && map.getZoom() < 13.5;
+  districtMarkers.forEach(function(m){ m.getElement().style.display = show ? "" : "none"; });
 }
 
-/* pan / zoom */
-var dragging=false, dragStart=null;
-
-/* keep the covering image/data inside the canvas - without this, panning
-   past its edge (even at min zoom, where there's zero slack on one axis)
-   reveals the same empty gutters that "cover" fitBase is meant to avoid */
-function clampView(){
-  var w = canvas.clientWidth, h = canvas.clientHeight;
-  var worldPxX = (B.lonMax-B.lonMin)*cosLat*baseScale*view.k;
-  var worldPxY = (B.latMax-B.latMin)*baseScale*view.k;
-  if(worldPxX >= w){
-    var maxTx = worldPxX/2 - w/2;
-    view.tx = Math.max(-maxTx, Math.min(maxTx, view.tx));
-  } else {
-    view.tx = 0;
-  }
-  if(worldPxY >= h){
-    var maxTy = worldPxY/2 - h/2;
-    view.ty = Math.max(-maxTy, Math.min(maxTy, view.ty));
-  } else {
-    view.ty = 0;
-  }
-}
-
-canvas.addEventListener("pointerdown", function(e){
-  dragging=true; dragStart={x:e.clientX,y:e.clientY,tx:view.tx,ty:view.ty};
-  canvas.classList.add("dragging"); canvas.setPointerCapture(e.pointerId);
-  hideClickCard();
-  hoverPt=null; document.getElementById("ttCard").classList.remove("show");
-});
-canvas.addEventListener("pointermove", function(e){
-  if(dragging){
-    view.tx = dragStart.tx + (e.clientX-dragStart.x);
-    view.ty = dragStart.ty + (e.clientY-dragStart.y);
-    clampView();
-    drawMap();
-  } else {
-    handleHover(e);
-  }
-});
-window.addEventListener("pointerup", function(e){ if(dragging){ dragging=false; canvas.classList.remove("dragging"); } });
-canvas.addEventListener("wheel", function(e){
-  e.preventDefault();
-  var rect = canvas.getBoundingClientRect();
-  var mx = e.clientX-rect.left, my = e.clientY-rect.top;
-  var factor = e.deltaY<0 ? 1.15 : 1/1.15;
-  zoomAt(mx,my,factor);
-},{passive:false});
-
-function zoomAt(mx,my,factor){
-  var w = canvas.clientWidth, h = canvas.clientHeight;
-  /* baseScale already "cover"-fits the container at k=1; the box now
-     matches Almaty's own aspect ratio (see resizeCanvas), so a bit of
-     zoom-out room below 1 just adds an even margin instead of the lopsided
-     gutter a mismatched box used to produce - 0.6 keeps that margin modest */
-  var newK = Math.max(0.6, Math.min(14, view.k*factor));
-  factor = newK/view.k;
-  view.tx = mx - (mx-view.tx)*factor;
-  view.ty = my - (my-view.ty)*factor;
-  view.k = newK;
-  clampView();
-  drawMap();
-}
-document.getElementById("zoomIn").addEventListener("click", function(){ zoomAt(canvas.clientWidth/2,canvas.clientHeight/2,1.3); });
-document.getElementById("zoomOut").addEventListener("click", function(){ zoomAt(canvas.clientWidth/2,canvas.clientHeight/2,1/1.3); });
-
-var hoverPt=null, hoverRAF=null;
-function handleHover(e){
-  if(hoverRAF) return;
-  hoverRAF = requestAnimationFrame(function(){
-    hoverRAF=null;
-    var rect = canvas.getBoundingClientRect();
-    var mx = e.clientX-rect.left, my = e.clientY-rect.top;
-    var best=null, bd=64;
-    for(var i=0;i<screenPts.length;i++){
-      var p = screenPts[i];
-      var dx=p.x-mx, dy=p.y-my, d2=dx*dx+dy*dy;
-      if(d2<bd){ bd=d2; best=p; }
-    }
-    var tt = document.getElementById("ttCard");
-    if(best){
-      hoverPt = best;
-      canvas.style.cursor="pointer";
-      tt.innerHTML = catBadgeHTML(best.r) + '<div class="tt-price tab">'+fmtT(best.r.price)+'</div>'+
-        '<div class="tt-title">'+titleFor(best.r)+'</div><div class="tt-addr">'+best.r.addr+'</div>';
-      var left = best.x+14, top = best.y-10;
-      if(left+230>canvas.clientWidth) left = best.x-244;
-      tt.style.left = left+"px"; tt.style.top = top+"px";
-      tt.classList.add("show");
-    } else {
-      hoverPt=null; canvas.style.cursor="grab"; tt.classList.remove("show");
-    }
-    drawMap();
+function applyBoundsVisibility(){
+  ["districts-line","districts-line-halo"].forEach(function(id){
+    map.setLayoutProperty(id, "visibility", showBounds ? "visible" : "none");
   });
+  updateLabelVisibility();
+}
+function applyPointsVisibility(){
+  map.setLayoutProperty("listings-points", "visibility", showPoints ? "visible" : "none");
+}
+function applyChoroplethVisibility(){
+  map.setLayoutProperty("districts-fill", "visibility", showChoropleth ? "visible" : "none");
+}
+function applyGridVisibility(){
+  ["grid-fill","grid-line"].forEach(function(id){
+    map.setLayoutProperty(id, "visibility", showGrid ? "visible" : "none");
+  });
+}
+
+function updateDistrictsLayer(){
+  var src = map.getSource("districts");
+  if(!src) return;
+  var agg = {};
+  districtAgg().forEach(function(r){ agg[r.district] = r; });
+  var meds = Object.keys(agg).map(function(k){ return agg[k].median; });
+  var minM = Math.min.apply(null, meds), maxM = Math.max.apply(null, meds);
+  var features = DISTRICTS_GEO.features.map(function(f){
+    var a = agg[f.properties.name];
+    var raw = a && maxM>minM ? (a.median-minM)/(maxM-minM) : 0.5;
+    /* offset+scale so even the cheapest district still reads as tinted,
+       not near-white - mirrors the old canvas seqColor(0.15+t*0.85) */
+    var t = 0.15 + raw*0.85;
+    return { type:"Feature", geometry:f.geometry, properties:{ name:f.properties.name, has:!!a, t:t } };
+  });
+  src.setData({ type:"FeatureCollection", features:features });
+}
+
+function computeGridGeoJSON(){
+  var g = computeGrid();
+  var vals = g.cells.map(function(c){ return c.stat; });
+  /* 5th/95th percentile instead of min/max - a handful of outlier cells
+     otherwise compress the whole scale into one washed-out middle tone */
+  var lo = percentile(vals,0.05), hi = percentile(vals,0.95);
+  var features = g.cells.map(function(c){
+    var lon0 = B.lonMin+c.col*g.cellLon, lon1 = lon0+g.cellLon;
+    var lat1 = B.latMax-c.row*g.cellLat, lat0 = lat1-g.cellLat;
+    var raw = hi>lo ? Math.max(0,Math.min(1,(c.stat-lo)/(hi-lo))) : 0.5;
+    var t = 0.1 + raw*0.9;
+    return {
+      type:"Feature",
+      geometry:{ type:"Polygon", coordinates:[[[lon0,lat0],[lon1,lat0],[lon1,lat1],[lon0,lat1],[lon0,lat0]]] },
+      properties:{ t:t, stat:c.stat, n:c.n, metric:gridMetric }
+    };
+  });
+  return { type:"FeatureCollection", features:features };
+}
+function updateGridLayer(){
+  var src = map.getSource("grid");
+  if(!src) return;
+  src.setData(computeGridGeoJSON());
+}
+
+function updateListingsLayer(){
+  var src = map.getSource("listings");
+  if(!src) return;
+  var features = filtered.filter(function(r){
+    return r.lat>=42.8 && r.lat<=43.65 && r.lon>=76.3 && r.lon<=77.7;
+  }).map(function(r){
+    return { type:"Feature", geometry:{type:"Point", coordinates:[r.lon,r.lat]}, properties:{ id:r.id, cat:r.cat } };
+  });
+  src.setData({ type:"FeatureCollection", features:features });
+}
+
+function updateMapData(){
+  if(!map.getSource("districts")) return;
+  updateDistrictsLayer();
+  updateGridLayer();
+  updateListingsLayer();
+}
+
+function applyThemeToMap(){
+  mapEl.classList.toggle("dark-tiles", isDarkTheme());
+  if(!map.getLayer("districts-fill")) return;
+  map.setPaintProperty("districts-fill", "fill-color", seqColorExpr(["get","t"]));
+  map.setPaintProperty("grid-fill", "fill-color", seqColorExpr(["get","t"]));
+  map.setPaintProperty("districts-line", "line-color", cssVar("--accent"));
+  map.setPaintProperty("districts-line-halo", "line-color", cssVar("--surface"));
+  map.setPaintProperty("grid-line", "line-color", cssVar("--surface"));
+}
+
+function addMapLayers(){
+  map.addSource("districts", { type:"geojson", data:{type:"FeatureCollection",features:[]} });
+  map.addLayer({ id:"districts-fill", type:"fill", source:"districts",
+    layout:{ visibility: showChoropleth?"visible":"none" },
+    paint:{ "fill-color": seqColorExpr(["get","t"]), "fill-opacity": ["case",["get","has"],0.75,0] } });
+  map.addLayer({ id:"districts-line-halo", type:"line", source:"districts",
+    layout:{ visibility: showBounds?"visible":"none" },
+    paint:{ "line-color": cssVar("--surface"), "line-width":3.6 } });
+  map.addLayer({ id:"districts-line", type:"line", source:"districts",
+    layout:{ visibility: showBounds?"visible":"none" },
+    paint:{ "line-color": cssVar("--accent"), "line-width":1.6 } });
+
+  map.addSource("grid", { type:"geojson", data:{type:"FeatureCollection",features:[]} });
+  map.addLayer({ id:"grid-fill", type:"fill", source:"grid",
+    layout:{ visibility: showGrid?"visible":"none" },
+    paint:{ "fill-color": seqColorExpr(["get","t"]), "fill-opacity":0.62 } });
+  map.addLayer({ id:"grid-line", type:"line", source:"grid",
+    layout:{ visibility: showGrid?"visible":"none" },
+    paint:{ "line-color": cssVar("--surface"), "line-width":0.6,
+      "line-opacity": ["interpolate",["linear"],["zoom"], 13,0, 14,0.6] } });
+
+  map.addSource("listings", { type:"geojson", data:{type:"FeatureCollection",features:[]} });
+  map.addLayer({ id:"listings-points", type:"circle", source:"listings",
+    layout:{ visibility: showPoints?"visible":"none" },
+    paint:{
+      "circle-radius": 3.1,
+      "circle-color": ["match",["get","cat"], "Квартира",cssVar("--cat-1"), "Дом/дача",cssVar("--cat-2"), "Комната",cssVar("--cat-3"), cssVar("--cat-1")],
+      "circle-opacity": 0.72,
+      "circle-stroke-color": cssVar("--surface"),
+      "circle-stroke-width": 0.8
+    } });
+
+  initDistrictLabels();
+  updateLabelVisibility();
+  applyThemeToMap();
+  updateMapData();
+}
+map.on("load", addMapLayers);
+map.on("zoom", updateLabelVisibility);
+
+function gridValueLabel(stat, metric){
+  if(metric==="pm2") return fmtInt(stat)+" ₸/м²";
+  if(metric==="price") return fmtT(stat);
+  return fmtInt(stat)+" объявл.";
 }
 function catBadgeHTML(r){ return ""; }
 function titleFor(r){
@@ -1084,10 +1146,45 @@ function titleFor(r){
   return bits.filter(Boolean).join(" · ");
 }
 
-canvas.addEventListener("click", function(e){
-  if(!hoverPt) return;
-  var r = hoverPt.r;
-  var cc = document.getElementById("ccCard");
+function positionCard(el, point, w0, w1){
+  var w = mapEl.clientWidth;
+  var left = point.x+w0, top = point.y-10;
+  if(left+230>w) left = point.x-w1;
+  el.style.left = left+"px"; el.style.top = top+"px";
+}
+
+var ttEl = document.getElementById("ttCard");
+var ccEl = document.getElementById("ccCard");
+
+map.on("mousemove", function(e){
+  var pts = map.queryRenderedFeatures(e.point, { layers:["listings-points"] });
+  if(pts.length){
+    var r = RECORDS_BY_ID[pts[0].properties.id];
+    map.getCanvas().style.cursor = "pointer";
+    ttEl.innerHTML = catBadgeHTML(r) + '<div class="tt-price tab">'+fmtT(r.price)+'</div>'+
+      '<div class="tt-title">'+titleFor(r)+'</div><div class="tt-addr">'+r.addr+'</div>';
+    positionCard(ttEl, e.point, 14, 244);
+    ttEl.classList.add("show");
+    return;
+  }
+  var cells = map.queryRenderedFeatures(e.point, { layers:["grid-fill"] });
+  if(cells.length && showGrid){
+    map.getCanvas().style.cursor = "";
+    var p = cells[0].properties;
+    var gSub = p.metric==="count" ? "" : '<div class="tt-addr">'+fmtInt(p.n)+' объявл.</div>';
+    ttEl.innerHTML = '<div class="tt-price tab">'+gridValueLabel(p.stat,p.metric)+'</div>'+gSub;
+    positionCard(ttEl, e.point, 14, 244);
+    ttEl.classList.add("show");
+    return;
+  }
+  map.getCanvas().style.cursor = "";
+  ttEl.classList.remove("show");
+});
+
+map.on("click", function(e){
+  var pts = map.queryRenderedFeatures(e.point, { layers:["listings-points"] });
+  if(!pts.length) return;
+  var r = RECORDS_BY_ID[pts[0].properties.id];
   var badges = [];
   if(r.furn) badges.push("с мебелью");
   if(r.balc) badges.push("с балконом");
@@ -1095,24 +1192,24 @@ canvas.addEventListener("click", function(e){
   if(r.pets) badges.push("можно с животными");
   if(r.kids) badges.push("можно с детьми");
   if(r.owner) badges.push(r.owner);
-  cc.innerHTML = '<button class="cc-close" id="ccClose">×</button>'+
+  ccEl.innerHTML = '<button class="cc-close" id="ccClose">×</button>'+
     '<div class="cc-price tab">'+fmtT(r.price)+'</div>'+
     '<div class="cc-title">'+r.cat+' · '+titleFor(r)+'</div>'+
     '<div class="cc-addr">'+r.district.replace(" район","")+', '+r.addr+'</div>'+
     '<div class="cc-badges">'+badges.map(function(b){return '<span class="badge">'+b+'</span>';}).join("")+'</div>'+
     '<a class="cc-link" target="_blank" rel="noopener" href="https://krisha.kz/a/show/'+r.id+'">Открыть на krisha.kz →</a>';
-  var left = hoverPt.x+16, top = hoverPt.y-20;
-  if(left+260>canvas.clientWidth) left = hoverPt.x-266;
-  cc.style.left = left+"px"; cc.style.top = Math.max(6,top)+"px";
-  cc.classList.add("show");
+  positionCard(ccEl, e.point, 16, 266);
+  ccEl.style.top = Math.max(6, e.point.y-20)+"px";
+  ccEl.classList.add("show");
   document.getElementById("ccClose").addEventListener("click", hideClickCard);
 });
-function hideClickCard(){ document.getElementById("ccCard").classList.remove("show"); }
+function hideClickCard(){ ccEl.classList.remove("show"); }
+map.on("movestart", function(){ hideClickCard(); ttEl.classList.remove("show"); });
 
-window.addEventListener("resize", debounce(resizeCanvas,120));
+window.addEventListener("resize", debounce(sizeMapContainer,120));
 
-/* theme change -> repaint (colors read live via cssVar) */
-window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", function(){ setTimeout(function(){ drawMap(); renderDistrictChart(); renderCatStats(); renderPriceHist(); renderFloorChart(); },30); });
+/* theme change -> re-apply colors (read live via cssVar) */
+window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", function(){ setTimeout(function(){ applyThemeToMap(); renderDistrictChart(); renderCatStats(); renderPriceHist(); renderFloorChart(); renderScatterChart(); },30); });
 
 /* ---------------- table ---------------- */
 var TABLE_COLS = [
@@ -1464,6 +1561,99 @@ function renderFloorChart(){
   });
 }
 
+/* ---------------- area vs price/m2 scatter ---------------- */
+var SCATTER_MAX_POINTS = 2500; // sample down for legibility/perf - overplotting past this just looks like a solid blob anyway
+var SCATTER_BUCKETS = 14, SCATTER_MIN_BUCKET_N = 20; // below this a bucket's median is too noisy to trust (a handful of listings, sometimes duplicate ads, can swing it wildly)
+/* "Комната" excluded: its "area" is the whole apartment/house, not the
+   room being rented, so price/m2 isn't meaningful for it - same reason
+   matrixBaseMatch() restricts the price/m2 matrix to "Квартира" only */
+var SCATTER_CATS = ["Квартира","Дом/дача"];
+
+function renderScatterChart(){
+  var svg = document.getElementById("scatterChart");
+  svg.innerHTML = "";
+  var W = svg.clientWidth || 600, H = 320;
+  var padL=62, padR=14, padT=16, padB=34;
+  svg.setAttribute("viewBox","0 0 "+W+" "+H);
+
+  var all = filtered.filter(function(r){ return r.area!=null && r.area>0 && r.pm2!=null && SCATTER_CATS.indexOf(r.cat)!==-1; });
+  if(!all.length){ document.getElementById("scatterNote").textContent = "Нет данных для отображения"; return; }
+
+  var areaVals = all.map(function(r){return r.area;});
+  var pm2Vals = all.map(function(r){return r.pm2;});
+  var stepX = niceStep(percentile(areaVals,0.97)/6);
+  var axisMaxX = stepX*Math.ceil(percentile(areaVals,0.97)/stepX);
+  var stepY = niceStep(percentile(pm2Vals,0.97)/5);
+  var axisMaxY = stepY*Math.ceil(percentile(pm2Vals,0.97)/stepY);
+
+  var pts = all.filter(function(r){ return r.area<=axisMaxX && r.pm2<=axisMaxY; });
+  var plotW = W-padL-padR, plotH = H-padT-padB;
+  function xOf(v){ return padL + v/axisMaxX*plotW; }
+  function yOf(v){ return padT + plotH - v/axisMaxY*plotH; }
+
+  for(var gy=0; gy<=axisMaxY+1e-9; gy+=stepY){
+    var y = yOf(gy);
+    svg.appendChild(svgEl("line",{x1:padL,x2:W-padR,y1:y,y2:y,stroke:cssVar("--line"),"stroke-width":1}));
+    var gl = svgEl("text",{x:padL-8,y:y+3,"text-anchor":"end",fill:cssVar("--ink-400")});
+    gl.textContent = fmtInt(gy);
+    svg.appendChild(gl);
+  }
+  for(var gx=0; gx<=axisMaxX+1e-9; gx+=stepX){
+    var x = xOf(gx);
+    var lx = svgEl("text",{x:x,y:H-14,"text-anchor":"middle",fill:cssVar("--ink-400")});
+    lx.textContent = fmtInt(gx);
+    svg.appendChild(lx);
+  }
+  var axLblY = svgEl("text",{x:padL,y:padT-4,"text-anchor":"start",fill:cssVar("--ink-400"),"font-weight":"600"});
+  axLblY.textContent = "₸/м²";
+  svg.appendChild(axLblY);
+  var axLblX = svgEl("text",{x:W-padR,y:H-2,"text-anchor":"end",fill:cssVar("--ink-400"),"font-weight":"600"});
+  axLblX.textContent = "площадь, м²";
+  svg.appendChild(axLblX);
+
+  var stride = Math.max(1, Math.ceil(pts.length/SCATTER_MAX_POINTS));
+  var shown = 0;
+  pts.forEach(function(r,i){
+    if(i%stride!==0) return;
+    shown++;
+    var c = svgEl("circle",{cx:xOf(r.area),cy:yOf(r.pm2),r:2.6,fill:catColor(r.cat),"fill-opacity":0.5});
+    svgTitle(c, r.cat+" · "+r.area+" м² · "+fmtInt(r.pm2)+" ₸/м²");
+    svg.appendChild(c);
+  });
+
+  /* trend per category, not one line across all of them - mixing
+     Квартира/Дом-дача/Комната into a single median just reflects which
+     category dominates that area bucket, not a real size effect */
+  var bucketW = axisMaxX/SCATTER_BUCKETS;
+  SCATTER_CATS.forEach(function(cat){
+    var buckets = new Array(SCATTER_BUCKETS).fill(null).map(function(){return [];});
+    pts.forEach(function(r){
+      if(r.cat!==cat) return;
+      var bi = Math.min(SCATTER_BUCKETS-1, Math.floor(r.area/bucketW));
+      buckets[bi].push(r.pm2);
+    });
+    var trendPts = [];
+    buckets.forEach(function(arr,i){
+      if(arr.length<SCATTER_MIN_BUCKET_N) return;
+      trendPts.push([(i+0.5)*bucketW, median(arr)]);
+    });
+    if(trendPts.length<2) return;
+    var d = trendPts.map(function(p,i){ return (i===0?"M":"L")+xOf(p[0]).toFixed(1)+","+yOf(p[1]).toFixed(1); }).join(" ");
+    svg.appendChild(svgEl("path",{d:d, fill:"none", stroke:catColor(cat), "stroke-width":2.4}));
+    trendPts.forEach(function(p){
+      var tc = svgEl("circle",{cx:xOf(p[0]),cy:yOf(p[1]),r:3.4,fill:catColor(cat),stroke:cssVar("--surface"),"stroke-width":1.2});
+      svgTitle(tc, cat+" — медиана в интервале: "+fmtInt(p[1])+" ₸/м²");
+      svg.appendChild(tc);
+    });
+  });
+
+  var omitted = all.length - pts.length;
+  var bits = [];
+  if(shown<pts.length) bits.push("показана выборка "+fmtInt(shown)+" из "+fmtInt(pts.length));
+  if(omitted>0) bits.push(fmtInt(omitted)+" объявл. за пределами осей не показаны");
+  document.getElementById("scatterNote").textContent = bits.join(" · ");
+}
+
 function refresh(){
   filtered = RECORDS.filter(matches);
   page = 0;
@@ -1472,12 +1662,12 @@ function refresh(){
   renderCatStats();
   renderPriceHist();
   renderFloorChart();
+  renderScatterChart();
   renderMatrix();
-  drawMap();
+  updateMapData();
   renderTable();
 }
 
-resizeCanvas();
 refresh();
 
 })();
