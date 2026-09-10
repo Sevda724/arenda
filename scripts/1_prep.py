@@ -49,6 +49,24 @@ if missing_mask.sum() > 0:
 print("Still missing district after geo fallback:", resid['district'].isna().sum())
 print(resid['district'].value_counts(dropna=False))
 
+# ---- confirm assigned district against actual coordinates ----
+# Text-extracted districts (the common case) can disagree with where the
+# point actually is - informal address/microdistrict naming vs real admin
+# borders. Flag rather than silently trust or drop: dashboard excludes
+# unconfirmed rows from district-level aggregates (map choropleth, district
+# chart, matrix) but keeps them in citywide stats where district doesn't matter.
+def confirm_district(row):
+    if pd.isna(row['district']):
+        return False
+    pt = Point(row['lon'], row['lat'])
+    for _, drow in districts_raw.iterrows():
+        if drow['name_ru'] == row['district']:
+            return bool(drow['geom'].contains(pt))
+    return False
+
+resid['district_confirmed'] = resid.apply(confirm_district, axis=1)
+print("District confirmed by coordinates:", resid['district_confirmed'].sum(), "/", resid['district'].notna().sum())
+
 # ---- parse title: rooms, area, floor ----
 def parse_title(title, cat):
     rooms = area = floor = floor_total = None

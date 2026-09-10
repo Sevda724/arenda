@@ -694,7 +694,7 @@ document.getElementById("sortByCount").addEventListener("click", function(){ cha
 function districtAgg(){
   var byD = {};
   DISTRICTS.forEach(function(d){ byD[d] = []; });
-  filtered.forEach(function(r){ if(byD[r.district]) byD[r.district].push(r.price); });
+  filtered.forEach(function(r){ if(r.dconf && byD[r.district]) byD[r.district].push(r.price); });
   var rows = DISTRICTS.map(function(d){
     var arr = byD[d];
     return { district:d, count:arr.length, median: median(arr)||0, mean: mean(arr)||0 };
@@ -1300,6 +1300,7 @@ function roomsLabel(n){
    district and rooms - those two are the matrix's own axes */
 function matrixBaseMatch(r){
   if(r.cat!=="Квартира") return false;
+  if(!r.dconf) return false;
   if(state.owner && r.owner!==state.owner) return false;
   if(state.wc && wcOf(r)!==state.wc) return false;
   if(r.price < state.priceMin) return false;

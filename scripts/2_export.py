@@ -44,6 +44,7 @@ for _, r in resid.iterrows():
         'id': int(r['source_id']),
         'cat': r['category_ru'],
         'district': r['district'],
+        'dconf': bool(r['district_confirmed']),
         'addr': str(r['full_address']).replace('Алматы, ', '', 1),
         'lat': clean(r['lat']),
         'lon': clean(r['lon']),
